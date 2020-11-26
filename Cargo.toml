@@ -3,8 +3,11 @@ name = "ht16k33-diet"
 version = "0.1.0"
 authors = ["Nils Eriksson <nils.edvin.eriksson@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+description = "Diet driver for the Holtek HT16K33 'RAM Mapping 16*8 LED Controller Driver with keyscan'"
+repository = "https://github.com/sesar54/ht16k33-diet"
+keywords = ["driver", "led", "ht16k33", "no-std", "embedded-hal"]
+categories = ["embedded", "hardware-support", "no-std"]
 
 [features]
 default = ["std"]
@@ -13,6 +16,3 @@ std = []
 [dependencies]
 bounded-integer = "0.2.3"
 embedded-hal = "0.2.4"
-
-[dev-dependencies]
-embedded-hal-mock  = "0.7.2"
