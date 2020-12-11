@@ -9,10 +9,9 @@ repository = "https://github.com/sesar54/ht16k33-lite"
 keywords = ["driver", "led", "ht16k33", "no-std", "embedded-hal"]
 categories = ["embedded", "hardware-support", "no-std"]
 
-[features]
-default = ["std"]
-std = []
-
 [dependencies]
-bounded-integer = "0.2.3"
 embedded-hal = "0.2.4"
+
+[dependencies.bounded-integer]
+version = "0.3.0"
+# features = ["step_trait"]

@@ -2,55 +2,108 @@
 #![allow(clippy::manual_range_contains)]
 #![feature(step_trait)]
 
-use bounded_integer::bounded_integer;
+//! 
+
 use embedded_hal::blocking::i2c::{Read, Write};
 
 pub const SEGMENTS_SIZE: usize  = 16;
 pub const COMMONS_SIZE: usize   = 8;
 
-pub mod command {
-    pub const DIMMING: u8       = 0b1110_0000;
-    pub const DISPLAY: u8       = 0b1000_0000;
-    pub const OSCILLATOR: u8    = 0b0010_0000;
+/// Contains all commands for each subsystem.
+pub mod commands {
+    pub const DISPLAY_DATA_ADDRESS_POINTER: u8  = 0b0000_0000; // R/W
+    pub const SYSTEM_SETUP: u8                  = 0b0010_0000; // Write only
+    pub const KEY_DATA_ADDRESS_POINTER: u8      = 0b0100_0000; // Read only
+    pub const INT_FLAG_ADDRESS_POINTER: u8      = 0b0110_0000; // Read only
+    pub const DISPLAY_SETUP: u8                 = 0b1000_0000; // Write only
+    pub const ROWINT_SET: u8                    = 0b1010_0000; // Write only
+    pub const DIMMING_SET: u8                   = 0b1110_0000; // Write only
+    pub const TEST_MODE_HOLTEK_ONLY: u8         = 0b1101_1001; // Write only
 }
 
-bounded_integer! {
-/// Holds the range of values a dimmer can have.
-/// Z0 being the lowest value and P15 being the largest.
-#[repr(u8)]
-pub enum Dimming { 0..16 }
+/// Contains all legal states for each subsystem
+pub mod states {
+    use bounded_integer::bounded_integer;
+
+    /// System Setup Register States
+    #[derive(Copy, Clone, Debug, Hash)]
+    pub enum System {
+        /// Oscillator off
+        StandBy = 0,
+        /// Oscillator on
+        Normal  = 1,
+    }
+
+    /// ROW/INT Set Register States
+    #[derive(Copy, Clone, Debug, Hash)]
+    pub enum RowInt {
+        /// Row driver output
+        Row     = 0b0000_0000,
+        /// Int output, active low
+        IntLow  = 0b0000_0001,
+        /// Int ooutput, active high
+        IntHigh = 0b0000_0011,
+    }
+
+    /// Display Setup Register States
+    #[derive(Copy, Clone, Debug, Hash)]
+    pub enum Display {
+        /// Display off
+        Off     = 0b0000_0000,
+        /// Display on
+        On      = 0b0000_0001,
+        /// Display on + Blinking frequency = 2hz
+        TwoHz   = 0b0000_0011,
+        /// Display on + Blinking frequency = 1hz
+        OneHz   = 0b0000_0101,
+        /// Display on + Blinking frequency = 0.5hz
+        HalfHz  = 0b0000_0111,
+    }
+
+    bounded_integer! {
+    /// Digital Dimming Data Input Pulse Width Duties
+    /// 
+    /// Ranges go from Z, P1..P15
+    #[repr(u8)]
+    pub enum Pulse { 0..16 }
+    }
 }
 
-// Holds display states
-#[derive(Copy, Clone, Debug, Hash)]
-pub enum Display {
-    Off     = 0b0000_0000,
-    On      = 0b0000_0001,
-    TwoHz   = 0b0000_0011,
-    OneHz   = 0b0000_0101,
-    HalfHz  = 0b0000_0111,
+pub mod addresses {
+    use bounded_integer::bounded_integer;
+
+    bounded_integer! {
+    /// Display Data Address Pointer
+    pub enum DDataAddress { 0..16 }
+    }
+
+    bounded_integer! {
+    /// Key Data Address Pointers
+    pub enum KeyData { 0..6 }
+    }
 }
 
-/// Holds oscillators 2 states
-#[derive(Copy, Clone, Debug, Hash)]
-pub enum Oscillator {
-    On  = 1,
-    Off = 0,
-}
-
+use commands::*;
+use states::*;
+use addresses::*;
 type Result<Error> = core::result::Result<(), Error>;
 
-/// Main driver. Holds the state and buffer.
+/// Driver for the HT16K33 RAM Mapping 16*8 LED controller Driver with keyscan
+/// 
+/// Has an internal state which it tries to reflec 
+/// onto connected micromicrocontroller.
+/// 
+/// Internal buffer is exposed and should be read and edited that way.
+/// Write buffer with 
 #[derive(Copy, Clone, Debug, Hash)]
 pub struct HT16K33<I2C> {
     i2c:     I2C,
     address: u8,
 
-    pub buffer: [u8; SEGMENTS_SIZE],
-
-    dimming_level:    Dimming,
-    display_state:    Display,
-    oscillator_state: Oscillator,
+    system:   System,
+    display:  Display,
+    rowint:   RowInt,
+    dimming:  Pulse,
 }
 
 impl<I2C, E> HT16K33<I2C>
@@ -64,32 +117,37 @@ where
             address,
             i2c,
 
-            buffer: [0; SEGMENTS_SIZE],
-
-            dimming_level:    Dimming::P15,
-            display_state:    Display::Off,
-            oscillator_state: Oscillator::Off,
+            system:   System::StandBy,
+            display:  Display::Off,
+            rowint:   RowInt::Row,
+            dimming:  Pulse::MAX,
         }
     }
 
-    /// Turns on oscillator, display, turns dimming to max, 
-    /// clears and writes buffer.
+    /// Turns system to normal mode, set's Row/Int to Row, turns on display, 
+    /// turns dimming to max, and writes a blank dbuffer.
     /// 
-    /// These are just five linear steps, you can easily start your driver
-    /// diffrently.
-    pub fn init(&mut self) -> Result<E> {
-        self.write_oscillator(Oscillator::On)?;
+    /// These are just five linear steps, you can easily start it diffrently.
+    pub fn power_on(&mut self) -> Result<E> {
+        self.write_system(System::Normal)?;
+        self.write_rowint(RowInt::Row)?;
         self.write_display(Display::On)?;
-        self.write_dimming(Dimming::P15)?;
-
-        self.clear_buffer();
-        self.write_buffer()
+        self.write_dimming(Pulse::P15)?;
+        self.write_dbuf(&[0; SEGMENTS_SIZE])
     }
 
-    /// Returns i2c interface.
-    pub fn destroy(self) -> I2C {
-        self.i2c
+    /// Writes blank buffer, turns off dimming display and oscillator.
+    /// 
+    /// Almost the reverse off `init()`.
+    pub fn shutdown(&mut self) -> Result<E> {
+        self.write_dbuf(&[0; SEGMENTS_SIZE])?;
+        self.write_dimming(Pulse::MAX)?;
+        self.write_display(Display::Off)?;
+        self.write_system(System::StandBy)
     }
+
+    /// Destroys self and returns internal i2c interface.
+    pub fn destroy(self) -> I2C {self.i2c}
 
     /// This method allows for almost direct access to the i2c field, 
     /// with only the address set. 
@@ -98,56 +156,70 @@ where
     pub fn write(&mut self, slice: &[u8]) -> Result<E> {
         self.i2c.write(self.address, slice)
     }
+    
+    /// Returns reference to internat system mode. 
+    /// Might not reflect controller.
+    pub fn system(&self) -> System {self.system}
 
-    /// Clears the buffer without writing to controller.
-    /// Should perhaps be followed by `write_buffer()`
-    pub fn clear_buffer(&mut self) {
-        self.buffer = [0; SEGMENTS_SIZE];
+    /// Writes new System mode to controller
+    /// and if successful store it's new state.
+    pub fn write_system(&mut self, mode: System) -> Result<E> {
+        self.write(&[SYSTEM_SETUP | mode as u8])?;
+        self.system = mode; Ok(())
     }
 
-    /// Reads in buffer from controller.
-    pub fn read_buffer(&mut self, buffer: &mut [u8; SEGMENTS_SIZE]) -> Result<E> {
-        self.i2c.read(self.address, buffer)
-    }
+    /// Returns reference to internal display state. 
+    /// Might not reflect microcontroller.
+    pub fn display(&self) -> Display {self.display}
 
-    /// Writes internal buffer to controller.
-    pub fn write_buffer(&mut self) -> Result<E> {
-        let mut write_buffer = [0u8; SEGMENTS_SIZE + 1];
-        write_buffer[0] = 0;
-        write_buffer[1..].clone_from_slice(&self.buffer[..]);
-        self.write(&write_buffer)
-    }
-
-    /// Return local dimming level. Might not reflect controller.
-    pub fn dimming(&self) -> Dimming {
-        self.dimming_level
-    }
-
-    /// Writes a new dimming level to controller.
-    pub fn write_dimming(&mut self, dimming: Dimming) -> Result<E> {
-        self.dimming_level = dimming;
-        self.write(&[command::DIMMING | dimming as u8])
-    }
-
-    /// Returns local display state. Might not reflect controller.
-    pub fn display(&self) -> Display {
-        self.display_state
-    }
-
-    /// Writes a new display state to controller.
+    /// Writes a new display state to microcontroller 
+    /// and if successful store it's new state.
     pub fn write_display(&mut self, display: Display) -> Result<E> {
-        self.display_state = display;
-        self.write(&[command::DISPLAY | display as u8])
+        self.write(&[DISPLAY_SETUP | display as u8])?;
+        self.display = display; Ok(())
     }
 
-    /// Returns local oscillator state. Might not reflect controller.
-    pub fn oscillator(&self) -> Oscillator {
-        self.oscillator_state
+    /// Returns reference to internal rowint state. 
+    /// Might not reflect controller.
+    pub fn rowint(&self) -> RowInt {self.rowint}
+
+    /// Writes new Row/Int output to controller
+    /// and if successful store it's new state.
+    pub fn write_rowint(&mut self, rowint: RowInt) -> Result<E> {
+        self.write(&[ROWINT_SET | rowint as u8])?;
+        self.rowint = rowint; Ok(())
+    }
+    
+    /// Returns dimming level. 
+    /// Might not reflect controller.
+    pub fn dimming(&self) -> Pulse {self.dimming}
+
+    /// Writes a new dimming level to controller
+    /// and if successful store it's new state.
+    pub fn write_dimming(&mut self, pulse: Pulse) -> Result<E> {
+        self.write(&[DIMMING_SET | pulse as u8])?;
+        self.dimming = pulse; Ok(())
     }
 
-    /// Writes a new oscillator state to controller.
-    pub fn write_oscillator(&mut self, oscillator: Oscillator) -> Result<E> {
-        self.oscillator_state = oscillator;
-        self.write(&[command::OSCILLATOR | oscillator as u8])
+    /// Writes a Display Buffer to controller Display Ram.
+    pub fn write_dbuf(&mut self, dbuf: &[u8; SEGMENTS_SIZE]) -> Result<E> {
+        self.write_dram(&DDataAddress::Z, dbuf)
+    }
+
+    /// Reads Display Ram from controller into buffer.
+    pub fn read_dram(&mut self, buf: &mut [u8]) -> Result<E> {
+        self.i2c.read(self.address, buf)
+    }
+
+    /// Writes slice to controller Display Ram 
+    /// starting with from DisplayData address.
+    /// 
+    /// Slice should not be larger than `SEGMENTS_SIZE` as entries after will be
+    /// ignored.
+    pub fn write_dram(&mut self, address: &DDataAddress, slice: &[u8]) -> Result<E> {
+        let mut write_buffer = [0u8; SEGMENTS_SIZE + 1];
+        write_buffer[0] = *address as u8;
+        write_buffer[1..].clone_from_slice(slice);
+        self.write(&write_buffer)
     }
 }
