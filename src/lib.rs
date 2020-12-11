@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::manual_range_contains)]
+#![feature(step_trait)]
 
 use bounded_integer::bounded_integer;
 use embedded_hal::blocking::i2c::{Read, Write};

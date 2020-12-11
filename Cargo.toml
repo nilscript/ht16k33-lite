@@ -1,11 +1,11 @@
 [package]
-name = "ht16k33-diet"
+name = "ht16k33-lite"
 version = "0.1.0"
 authors = ["Nils Eriksson <nils.edvin.eriksson@gmail.com>"]
 edition = "2018"
 license = "MIT"
-description = "Diet driver for the Holtek HT16K33 'RAM Mapping 16*8 LED Controller Driver with keyscan'"
-repository = "https://github.com/sesar54/ht16k33-diet"
+description = "Driver for the Holtek HT16K33 'RAM Mapping 16*8 LED Controller Driver with keyscan'"
+repository = "https://github.com/sesar54/ht16k33-lite"
 keywords = ["driver", "led", "ht16k33", "no-std", "embedded-hal"]
 categories = ["embedded", "hardware-support", "no-std"]
 
