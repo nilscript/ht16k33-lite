@@ -14,4 +14,4 @@ embedded-hal = "0.2.4"
 
 [dependencies.bounded-integer]
 version = "0.3.0"
-# features = ["step_trait"]
+features = ["step_trait"]
