@@ -1,5 +1,6 @@
-#![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::manual_range_contains)]
+#![cfg_attr(not(feature = "std"), no_std)]
+#![feature(step_trait, step_trait_ext)]
 
 //! 
 
@@ -99,6 +100,8 @@ pub struct HT16K33<I2C> {
     i2c:     I2C,
     address: u8,
 
+    pub dbuf: [u8; SEGMENTS_SIZE],
+
     system:   System,
     display:  Display,
     rowint:   RowInt,
@@ -116,6 +119,8 @@ where
             address,
             i2c,
 
+            dbuf: [0; SEGMENTS_SIZE],
+
             system:   System::StandBy,
             display:  Display::Off,
             rowint:   RowInt::Row,
@@ -132,14 +137,14 @@ where
         self.write_rowint(RowInt::Row)?;
         self.write_display(Display::On)?;
         self.write_dimming(Pulse::P15)?;
-        self.write_dbuf(&[0; SEGMENTS_SIZE])
+        self.write_dbuf()
     }
 
     /// Writes blank buffer, turns off dimming display and oscillator.
     /// 
     /// Almost the reverse off `init()`.
     pub fn shutdown(&mut self) -> Result<E> {
-        self.write_dbuf(&[0; SEGMENTS_SIZE])?;
+        self.write_dbuf()?;
         self.write_dimming(Pulse::MAX)?;
         self.write_display(Display::Off)?;
         self.write_system(System::StandBy)
@@ -200,9 +205,16 @@ where
         self.dimming = pulse; Ok(())
     }
 
-    /// Writes a Display Buffer to controller Display Ram.
-    pub fn write_dbuf(&mut self, dbuf: &[u8; SEGMENTS_SIZE]) -> Result<E> {
-        self.write_dram(&DDataAddress::Z, dbuf)
+    /// Clears Display Buffer.
+    pub fn clear_dbuf(&mut self) {
+        self.dbuf = [0; SEGMENTS_SIZE];
+    }
+
+    /// Writes Display Buffer to controller Display Ram.
+    pub fn write_dbuf(&mut self) -> Result<E> {
+        let mut write_buffer = [0; SEGMENTS_SIZE + 1];
+        write_buffer[1..].clone_from_slice(&self.dbuf);
+        self.write(&write_buffer)
     }
 
     /// Reads Display Ram from controller into buffer.
@@ -216,7 +228,7 @@ where
     /// Slice should not be larger than `SEGMENTS_SIZE` as entries after will be
     /// ignored.
     pub fn write_dram(&mut self, address: &DDataAddress, slice: &[u8]) -> Result<E> {
-        let mut write_buffer = [0u8; SEGMENTS_SIZE + 1];
+        let mut write_buffer = [0; SEGMENTS_SIZE + 1];
         write_buffer[0] = *address as u8;
         write_buffer[1..].clone_from_slice(slice);
         self.write(&write_buffer)
