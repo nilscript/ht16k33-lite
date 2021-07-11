@@ -1,6 +1,6 @@
 #![allow(clippy::manual_range_contains)]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(step_trait, step_trait_ext)]
+#![feature(step_trait)]
 
 //! 
 
