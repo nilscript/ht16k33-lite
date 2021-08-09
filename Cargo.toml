@@ -11,7 +11,7 @@ keywords = ["driver", "led", "ht16k33", "no-std", "embedded-hal"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
-embedded-hal = "0.2.4"
+embedded-hal = "0.2"
 
 [dependencies.bounded-integer]
 version = "0.5.0"
