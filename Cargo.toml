@@ -5,14 +5,10 @@ version = "0.1.0"
 authors = ["Nils Eriksson <nils.edvin.eriksson@gmail.com>"]
 license = "MIT"
 description = "Driver for the Holtek HT16K33 'RAM Mapping 16*8 LED Controller Driver with keyscan'"
-repository = "https://github.com/sesar54/ht16k33-lite"
+repository = "https://github.com/nilscript/ht16k33-lite"
 readme = "Readme.md"
 keywords = ["driver", "led", "ht16k33", "no-std", "embedded-hal"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
 embedded-hal = "0.2"
-
-[dependencies.bounded-integer]
-version = "0.5.0"
-features = ["macro"]

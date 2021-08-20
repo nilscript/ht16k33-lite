@@ -10,7 +10,7 @@ pub const SEGMENTS_SIZE: usize  = 16;
 pub const COMMONS_SIZE: usize   = 8;
 
 /// Contains all commands for each subsystem.
-pub mod commands {
+pub mod command {
     pub const DISPLAY_DATA_ADDRESS_POINTER: u8  = 0b0000_0000; // R/W
     pub const SYSTEM_SETUP: u8                  = 0b0010_0000; // Write only
     pub const KEY_DATA_ADDRESS_POINTER: u8      = 0b0100_0000; // Read only
@@ -22,9 +22,7 @@ pub mod commands {
 }
 
 /// Contains all legal states for each subsystem.
-pub mod states {
-    use bounded_integer::bounded_integer;
-
+pub mod state {
     /// System Setup Register States.
     #[derive(Copy, Clone, Debug, Hash)]
     pub enum System {
@@ -34,7 +32,7 @@ pub mod states {
         Normal  = 1,
     }
 
-    /// ROW/INT Set Register States.
+    /// ROW/INT Set Register State.
     #[derive(Copy, Clone, Debug, Hash)]
     pub enum RowInt {
         /// Row driver output
@@ -45,7 +43,7 @@ pub mod states {
         IntHigh = 0b0000_0011,
     }
 
-    /// Display Setup Register States.
+    /// Display Setup Register State.
     #[derive(Copy, Clone, Debug, Hash)]
     pub enum Display {
         /// Display off
@@ -60,32 +58,80 @@ pub mod states {
         HalfHz  = 0b0000_0111,
     }
 
-    bounded_integer! {
-    /// Digital Dimming Data Input Pulse Width Duties.
-    /// 
-    /// Ranges go from Z, P1..P15.
-    #[repr(u8)]
-    pub enum Pulse { 0..16 }
+    /// Digital Dimming Data Input Pulse Width Duty.
+    #[derive(Copy, Clone, Debug, Hash)]
+    pub enum Pulse { 
+        /// 1/16 Duty
+        Duty1,
+        /// 2/16 Duty
+        Duty2,
+        /// 3/16 Duty
+        Duty3,
+        /// 4/16 Duty
+        Duty4,
+        /// 5/16 Duty
+        Duty5,
+        /// 6/16 Duty
+        Duty6,
+        /// 7/16 Duty
+        Duty7,
+        /// 8/16 Duty
+        Duty8,
+        /// 9/16 Duty
+        Duty9,
+        /// 10/16 Duty
+        Duty10,
+        /// 11/16 Duty
+        Duty11,
+        /// 12/16 Duty
+        Duty12,
+        /// 13/16 Duty
+        Duty13,
+        /// 14/16 Duty
+        Duty14,
+        /// 15/16 Duty
+        Duty15,
+        /// 16/16 Duty
+        Duty16, 
     }
 }
 
-pub mod addresses {
-    use bounded_integer::bounded_integer;
-
-    bounded_integer! {
+pub mod address {
     /// Display Data Address Pointer.
-    pub enum DDataAddress { 0..16 }
+    #[derive(Copy, Clone, Debug, Hash)]
+    pub enum DisplayDataAddress {
+        Pointer0,
+        Pointer1,
+        Pointer2,
+        Pointer3,
+        Pointer4,
+        Pointer5,
+        Pointer6,
+        Pointer7,
+        Pointer8,
+        Pointer9,
+        Pointer10,
+        Pointer11,
+        Pointer12,
+        Pointer13,
+        Pointer14,
+        Pointer15,
     }
 
-    bounded_integer! {
-    /// Key Data Address Pointers.
-    pub enum KeyData { 0..6 }
+    /// Key Data Address Pointer.
+    #[derive(Copy, Clone, Debug, Hash)]
+    pub enum KeyDataAddress {  
+        Pointer0,
+        Pointer1,
+        Pointer2,
+        Pointer3,
+        Pointer4,
+        Pointer5,
     }
 }
 
-use commands::*;
-use states::*;
-use addresses::*;
+use command::*;
+use state::*;
 type Result<Error> = core::result::Result<(), Error>;
 
 /// Driver for the HT16K33 RAM Mapping 16*8 LED controller Driver with keyscan.
@@ -124,7 +170,7 @@ where
             system:   System::StandBy,
             display:  Display::Off,
             rowint:   RowInt::Row,
-            dimming:  Pulse::MAX,
+            dimming:  Pulse::Duty16,
         }
     }
 
@@ -134,7 +180,7 @@ where
         self.write_system(System::Normal)?;
         self.write_rowint(RowInt::Row)?;
         self.write_display(Display::On)?;
-        self.write_dimming(Pulse::P15)?;
+        self.write_dimming(Pulse::Duty16)?;
         self.write_dbuf()
     }
 
@@ -143,7 +189,7 @@ where
     /// Almost the reverse off `power_on()`.
     pub fn shutdown(&mut self) -> Result<E> {
         self.write_dbuf()?;
-        self.write_dimming(Pulse::MAX)?;
+        self.write_dimming(Pulse::Duty16)?;
         self.write_display(Display::Off)?;
         self.write_system(System::StandBy)
     }
@@ -224,7 +270,7 @@ where
     /// 
     /// Slice should not be larger than `SEGMENTS_SIZE` as entries after will be
     /// ignored.
-    pub fn write_dram(&mut self, address: &DDataAddress, slice: &[u8]) -> Result<E> {
+    pub fn write_dram(&mut self, address: &address::DisplayDataAddress, slice: &[u8]) -> Result<E> {
         let mut write_buffer = [0; SEGMENTS_SIZE + 1];
         write_buffer[0] = *address as u8;
         write_buffer[1..].clone_from_slice(slice);
