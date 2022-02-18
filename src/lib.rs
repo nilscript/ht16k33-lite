@@ -236,6 +236,7 @@ where
         self.dim = dim; Ok(())
     }
 
+    /// Writes a slice of zeros to controller Display Ram.
     pub fn clear_dram(&mut self) -> Result<E> {
         self.i2c.write(self.addr, &[0; SEGMENTS_SIZE])
     }
