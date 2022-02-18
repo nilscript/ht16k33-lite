@@ -203,7 +203,7 @@ where
     /// Writes unchecked slice to controller.
     /// 
     /// Use with caution! See the source code of this library for usage examples.
-    pub unsafe fn write(&mut self, slice: &[u8]) -> Result<E> {
+    pub unsafe fn write_raw(&mut self, slice: &[u8]) -> Result<E> {
         self.i2c.write(self.addr, slice)
     }
     
@@ -213,7 +213,7 @@ where
     /// Writes new System mode to controller
     /// and if successful store it's new state.
     pub fn write_system_setup(&mut self, sys: SystemSetup) -> Result<E> {
-        unsafe { self.write(&[SYSTEM_SETUP | sys as u8])?; }
+        unsafe { self.write_raw(&[SYSTEM_SETUP | sys as u8])?; }
         self.sys = sys; Ok(())
     }
 
@@ -223,7 +223,7 @@ where
     /// Writes a new display state to controller 
     /// and if successful store it's new state.
     pub fn write_display_setup(&mut self, dpy: DisplaySetup) -> Result<E> {
-        unsafe { self.write(&[DISPLAY_SETUP | dpy as u8])?; }
+        unsafe { self.write_raw(&[DISPLAY_SETUP | dpy as u8])?; }
         self.dpy = dpy; Ok(())
     }
 
@@ -233,7 +233,7 @@ where
     /// Writes new Row/Int output to controller
     /// and if successful store it's new state.
     pub fn write_row_int_set(&mut self, rowint: RowIntSet) -> Result<E> {
-        unsafe { self.write(&[ROWINT_SET | rowint as u8])?; }
+        unsafe { self.write_raw(&[ROWINT_SET | rowint as u8])?; }
         self.rowint = rowint; Ok(())
     }
     
@@ -243,7 +243,7 @@ where
     /// Writes a new dimming level to controller
     /// and if successful store it's new state.
     pub fn write_dimming_set(&mut self, dim: DimmingSet) -> Result<E> {
-        unsafe { self.write(&[DIMMING_SET | dim as u8])?; }
+        unsafe { self.write_raw(&[DIMMING_SET | dim as u8])?; }
         self.dim = dim; Ok(())
     }
 
@@ -256,7 +256,7 @@ where
     pub fn write_dbuf(&mut self) -> Result<E> {
         let mut write_buffer = [0; SEGMENTS_SIZE + 1];
         write_buffer[1..].clone_from_slice(&self.dbuf);
-        unsafe { self.write(&write_buffer) }
+        unsafe { self.write_raw(&write_buffer) }
     }
 
     /// Reads Display Ram from controller into buffer.
@@ -277,6 +277,6 @@ where
         let mut write_buffer = [0; SEGMENTS_SIZE + 1];
         write_buffer[0] = *addr as u8;
         write_buffer[1..].clone_from_slice(slice);
-        unsafe { self.write(&write_buffer) }
+        unsafe { self.write_raw(&write_buffer) }
     }
 }
