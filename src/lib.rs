@@ -143,16 +143,10 @@ pub type Result<Error> = core::result::Result<(), Error>;
 /// 
 /// Has an internal state which it tries to reflect
 /// onto the connected controller.
-/// 
-/// Internal buffer is exposed and should be read and edited that way.
-/// Write buffer with 
 #[derive(Copy, Clone, Debug, Hash)]
 pub struct HT16K33<I2C> {
     i2c:        I2C,
     addr:       u8,
-
-    pub dbuf:   [u8; SEGMENTS_SIZE],
-
     sys:        SystemSetup,
     dpy:        DisplaySetup,
     rowint:     RowIntSet,
@@ -168,9 +162,6 @@ where
         HT16K33 {
             addr,
             i2c,
-
-            dbuf:   [0; SEGMENTS_SIZE],
-
             sys:    SystemSetup::StandBy,
             dpy:    DisplaySetup::Off,
             rowint: RowIntSet::Row,
@@ -184,15 +175,13 @@ where
         self.write_system_setup(SystemSetup::Normal)?;
         self.write_row_int_set(RowIntSet::Row)?;
         self.write_display_setup(DisplaySetup::On)?;
-        self.write_dimming_set(DimmingSet::Duty16)?;
-        self.clear_dbuf();
-        self.write_dbuf()
+        self.write_dimming_set(DimmingSet::Duty16)?;        
+        self.clear_dram()
     }
 
     /// Writes blank buffer, turns off display and oscillator.
     pub fn shutdown(&mut self) -> Result<E> {
-        self.clear_dbuf();
-        self.write_dbuf()?;
+        self.clear_dram()?;
         self.write_display_setup(DisplaySetup::Off)?;
         self.write_system_setup(SystemSetup::StandBy)
     }
@@ -247,16 +236,8 @@ where
         self.dim = dim; Ok(())
     }
 
-    /// Clears Display Buffer.
-    pub fn clear_dbuf(&mut self) {
-        self.dbuf = [0; SEGMENTS_SIZE];
-    }
-
-    /// Writes Display Buffer to controller Display Ram.
-    pub fn write_dbuf(&mut self) -> Result<E> {
-        let mut write_buffer = [0; SEGMENTS_SIZE + 1];
-        write_buffer[1..].clone_from_slice(&self.dbuf);
-        unsafe { self.write_raw(&write_buffer) }
+    pub fn clear_dram(&mut self) -> Result<E> {
+        self.i2c.write(self.addr, &[0; SEGMENTS_SIZE])
     }
 
     /// Reads Display Ram from controller into buffer.
