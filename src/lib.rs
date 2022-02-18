@@ -187,7 +187,7 @@ where
     }
 
     /// Destroys self and returns internal i2c interface.
-    pub fn destroy(self) -> I2C {self.i2c}
+    pub fn i2c(self) -> I2C {self.i2c}
 
     /// Writes unchecked slice to controller.
     /// 
@@ -197,7 +197,7 @@ where
     }
     
     /// Returns reference to internat system mode. 
-    pub fn read_system_setup(&self) -> SystemSetup {self.sys}
+    pub fn system_setup(&self) -> SystemSetup {self.sys}
 
     /// Writes new System mode to controller
     /// and if successful store it's new state.
@@ -207,7 +207,7 @@ where
     }
 
     /// Returns reference to internal display state. 
-    pub fn read_display_setup(&self) -> DisplaySetup {self.dpy}
+    pub fn display_setup(&self) -> DisplaySetup {self.dpy}
 
     /// Writes a new display state to controller 
     /// and if successful store it's new state.
@@ -217,7 +217,7 @@ where
     }
 
     /// Returns reference to internal rowint state. 
-    pub fn read_row_int_set(&self) -> RowIntSet {self.rowint}
+    pub fn row_int_set(&self) -> RowIntSet {self.rowint}
 
     /// Writes new Row/Int output to controller
     /// and if successful store it's new state.
@@ -227,7 +227,7 @@ where
     }
     
     /// Returns dimming level. 
-    pub fn read_dimming_set(&self) -> DimmingSet {self.dim}
+    pub fn dimming_set(&self) -> DimmingSet {self.dim}
 
     /// Writes a new dimming level to controller
     /// and if successful store it's new state.
