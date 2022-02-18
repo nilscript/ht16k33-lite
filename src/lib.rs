@@ -242,6 +242,8 @@ where
 
     /// Reads Display Ram from controller into buffer.
     /// 
+    /// Note. Standard implementation of HT16K33 will only read `SEGMENTS_SIZE` 
+    /// bytes to buffer so having a bigger buffer is redundant.
     pub fn read_dram(&mut self, buf: &mut [u8]) -> Result<E> {
         self.i2c.read(self.addr, buf)
     }
