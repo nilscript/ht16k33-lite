@@ -17,6 +17,7 @@ extern crate num_derive;
 
 use embedded_hal::blocking::i2c::{Read, Write};
 pub use num_traits::cast::{FromPrimitive, ToPrimitive};
+use core::cmp::min;
 
 pub const SEGMENTS_SIZE: usize  = 16;
 pub const COMMONS_SIZE: usize   = 8;
@@ -256,9 +257,10 @@ where
     /// Slice should not be larger than `SEGMENTS_SIZE - addr` as entries after will be
     /// ignored.
     pub fn write_dram(&mut self, addr: &DisplayDataAddressPointer, slice: &[u8]) -> Result<E> {
-        let mut write_buffer = [0; SEGMENTS_SIZE + 1];
-        write_buffer[0] = *addr as u8;
-        write_buffer[1..].clone_from_slice(slice);
-        unsafe { self.write_raw(&write_buffer) }
+        let mut buf = [0; SEGMENTS_SIZE + 1];
+        let len = min(SEGMENTS_SIZE, slice.len());
+        buf[0] = *addr as u8;
+        buf[1..len + 1].clone_from_slice(&slice[..len]);
+        unsafe { self.write_raw(&buf[..len + 1]) }
     }
 }
