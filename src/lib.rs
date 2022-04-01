@@ -7,26 +7,24 @@
 //! Using this library should be done after reading the documentation for the
 //! ht16k33 Controller as this library.
 
+#![no_std]
 pub mod prelude {
-    pub use super::DisplayDataAddressPointer as DDAP;
-    pub use super::SystemSetup as SSetup;
-    pub use super::KeyDataAddressPointer as KDAP;
-    pub use super::DisplaySetup as DSetup;
-    pub use super::RowIntSet as RIS;
-    pub use super::DimmingSet as DIS;
-    pub use super::HT16K33;
+    pub use super::*;
 }
 
+#[macro_use]
+extern crate num_derive;
+
 use embedded_hal::blocking::i2c::{Read, Write};
+pub use num_traits::cast::{FromPrimitive, ToPrimitive};
 
 pub const SEGMENTS_SIZE: usize  = 16;
 pub const COMMONS_SIZE: usize   = 8;
 
-
 pub const DISPLAY_DATA_ADDRESS_POINTER: u8 = 0b0000_0000;
 
 /// Read / Write
-#[derive(Copy, Clone, Debug, Hash)]
+#[derive(Copy, Clone, Debug, FromPrimitive, ToPrimitive, Hash)]
 pub enum DisplayDataAddressPointer {
     P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15
 }
@@ -51,7 +49,7 @@ pub const KEY_DATA_ADDRESS_POINTER: u8 = 0b0100_0000;
 /// Command for Key Data Address Pointer
 /// 
 /// Option: Read only
-#[derive(Copy, Clone, Debug, Hash)]
+#[derive(Copy, Clone, Debug, FromPrimitive, ToPrimitive, Hash)]
 pub enum KeyDataAddressPointer {  
     P0, P1, P2, P3, P4, P5
 }
@@ -98,7 +96,7 @@ pub enum RowIntSet {
 pub const DIMMING_SET: u8 = 0b1110_0000;
 
 /// Digital Dimming Data Input Pulse Width Duty.
-#[derive(Copy, Clone, Debug, Hash)]
+#[derive(Copy, Clone, Debug, FromPrimitive, ToPrimitive, Hash)]
 pub enum DimmingSet { 
     /// 1/16 Duty
     Duty1,
@@ -187,7 +185,7 @@ where
     }
 
     /// Destroys self and returns internal i2c interface.
-    pub fn i2c(self) -> I2C {self.i2c}
+    pub fn take_i2c(self) -> I2C {self.i2c}
 
     /// Writes unchecked slice to controller.
     /// 
@@ -216,7 +214,7 @@ where
         self.dpy = dpy; Ok(())
     }
 
-    /// Returns reference to internal rowint state. 
+    /// Returns reference to internal rowint state.
     pub fn row_int_set(&self) -> RowIntSet {self.rowint}
 
     /// Writes new Row/Int output to controller
@@ -250,7 +248,7 @@ where
     }
 
     /// Writes slice to controller Display Ram 
-    /// starting with from DisplayData address.
+    /// starting with from display data address.
     /// 
     /// This will update only addresses including and after `addr` so less
     /// the whole ram need not to be updated on a write
