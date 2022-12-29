@@ -11,8 +11,8 @@ keywords = ["driver", "led", "ht16k33", "no-std", "embedded-hal"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
-embedded-hal = "0.2.4"
+embedded-hal = "0.2"
 
 [dependencies.bounded-integer]
-version = "0.4.0"
-features = ["step_trait"]
+version = "0.5"
+features = ["macro", "num-traits02", "step_trait"]
