@@ -86,7 +86,7 @@ pub mod addresses {
 use commands::*;
 use states::*;
 use addresses::*;
-type Result<Error> = core::result::Result<(), Error>;
+pub type Result<Error> = core::result::Result<(), Error>;
 
 /// Driver for the HT16K33 RAM Mapping 16*8 LED controller Driver with key scan.
 /// 
