@@ -11,14 +11,14 @@ pub const COMMONS_SIZE: usize   = 8;
 
 /// Contains all commands for each subsystem.
 pub mod commands {
-    pub const DISPLAY_DATA_ADDRESS_POINTER: u8  = 0b0000_0000; // R/W
-    pub const SYSTEM_SETUP: u8                  = 0b0010_0000; // Write only
-    pub const KEY_DATA_ADDRESS_POINTER: u8      = 0b0100_0000; // Read only
-    pub const INT_FLAG_ADDRESS_POINTER: u8      = 0b0110_0000; // Read only
-    pub const DISPLAY_SETUP: u8                 = 0b1000_0000; // Write only
-    pub const ROWINT_SET: u8                    = 0b1010_0000; // Write only
-    pub const DIMMING_SET: u8                   = 0b1110_0000; // Write only
-    pub const TEST_MODE_HOLTEK_ONLY: u8         = 0b1101_1001; // Write only
+    pub const DISPLAY_DATA_ADDRESS_POINTER: u8 = 0b0000_0000; // R/W
+    pub const SYSTEM_SETUP:                 u8 = 0b0010_0000; // Write only
+    pub const KEY_DATA_ADDRESS_POINTER:     u8 = 0b0100_0000; // Read only
+    pub const INT_FLAG_ADDRESS_POINTER:     u8 = 0b0110_0000; // Read only
+    pub const DISPLAY_SETUP:                u8 = 0b1000_0000; // Write only
+    pub const ROWINT_SET:                   u8 = 0b1010_0000; // Write only
+    pub const DIMMING_SET:                  u8 = 0b1110_0000; // Write only
+    pub const TEST_MODE_HOLTEK_ONLY:        u8 = 0b1101_1001; // Write only
 }
 
 /// Contains all legal states for each subsystem.
@@ -74,7 +74,7 @@ pub mod addresses {
 
     bounded_integer! {
     /// Display Data Address Pointer.
-    pub enum DDataAddress { 0..16 }
+    pub enum DDataAddress { 0..=15 }
     }
 
     bounded_integer! {
@@ -113,10 +113,13 @@ where
     /// Creates a new instance.
     /// Should be followed by power_on().
     pub fn new(i2c: I2C, address: u8) -> Self {
+        let mut dbuf = [0; SEGMENTS_SIZE + 1];
+        dbuf[0] = DISPLAY_DATA_ADDRESS_POINTER;
+
         HT16K33 {
             i2c,
             address,
-            dbuf:     [0; SEGMENTS_SIZE + 1],
+            dbuf,
             system:   System::StandBy,
             display:  Display::Off,
             rowint:   RowInt::Row,
@@ -131,6 +134,7 @@ where
         self.write_rowint(RowInt::Row)?;
         self.write_display(Display::On)?;
         self.write_dimming(Pulse::MAX)?;
+        self.clear_dbuf();
         self.write_dbuf()
     }
 
@@ -156,14 +160,10 @@ where
     }
 
     /// Returns a copy of the address.
-    pub fn address(&self) -> u8 {
-        self.address
-    }
+    pub fn address(&self) -> u8 {self.address}
 
     /// Sets the address.
-    pub fn set_address(&mut self, address: u8) {
-        self.address = address;
-    }
+    pub fn set_address(&mut self, address: u8) {self.address = address}
     
     /// Returns reference to internat system mode. 
     /// Might not reflect controller.
@@ -210,14 +210,10 @@ where
     }
 
     /// Returns display buffer as a slice.
-    pub fn dbuf(&self) -> &[u8] {
-        &self.dbuf[1..]
-    }
+    pub fn dbuf(&self) -> &[u8] {&self.dbuf[1..]}
 
     /// Returns display buffer as a mutable slice.
-    pub fn dbuf_mut(&mut self) -> &mut [u8] {
-        &mut self.dbuf[1..]
-    }
+    pub fn dbuf_mut(&mut self) -> &mut [u8] {&mut self.dbuf[1..]}
 
     /// Sets the display buffer.
     ///
@@ -231,9 +227,7 @@ where
     }
 
     /// Clears Display Buffer.
-    pub fn clear_dbuf(&mut self) {
-        self.dbuf[1..].fill(0);
-    }
+    pub fn clear_dbuf(&mut self) {self.dbuf[1..].fill(0)}
 
     /// Writes Display Buffer to controller Display Ram.
     pub fn write_dbuf(&mut self) -> Result<E> {
