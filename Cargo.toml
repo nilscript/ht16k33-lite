@@ -12,7 +12,5 @@ categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
 embedded-hal = "0.2"
-
-[dependencies.bounded-integer]
-version = "0.5"
-features = ["macro", "num-traits02", "step_trait"]
+num-traits =  { version = "0.2", default-features = false }
+num-derive = { version = "0.3", default-features = false }
