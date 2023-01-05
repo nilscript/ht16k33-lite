@@ -6,6 +6,7 @@
 //! ht16k33 is a low level library for communicating with ht16k33 controllers.
 //! https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf
 
+use ambassador::delegatable_trait;
 use embedded_hal::blocking::i2c;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive};
@@ -188,12 +189,9 @@ pub struct HT16K33<I2C> {
     dimming:  DigitalDimmingDataInput,
 }
 
-impl<I2C, E> HT16K33<I2C>
-where
-    I2C: i2c::Read<Error = E> + i2c::Write<Error = E>
-{
-    /// Creates a new instance.
-    /// Should be followed by power_on().
+impl<I2C> HT16K33<I2C> {
+    /// Creates a new instance of HT16K33 driver.
+    /// Should be followed by `.power_on()`
     pub fn new(i2c: I2C, i2c_address: u8) -> Self {
         let mut dbuf = [0; SEGMENTS_SIZE + 1];
         dbuf[0] = DisplayDataAddressPointer::Addr0 as u8;
@@ -208,10 +206,97 @@ where
             dimming:  DigitalDimmingDataInput::Duty16_16,
         }
     }
+}
+
+#[delegatable_trait]
+pub trait HT16K33Trait<I2C, E> {
+    /// Destroys self and returns internal i2c interface.
+    fn i2c(self) -> I2C;
+
+    /// Writes unchecked slice to controller.
+    /// 
+    /// Use with caution! See the source code of this library of how to use it.
+    unsafe fn write(&mut self, slice: &[u8]) -> Result<E>;
+
+    /// Returns a copy of the i2c address.
+    fn i2c_address(&self) -> u8;
+
+    /// Sets the i2c address.
+    fn set_i2c_address(&mut self, i2c_address: u8);
+    
+    /// Returns reference to internat system mode. 
+    /// Might not reflect controller.
+    fn system(&self) -> SystemSetupRegister;
+
+    /// Writes new System mode to controller
+    /// and if successful store it's new state.
+    fn write_system(&mut self, system: SystemSetupRegister) -> Result<E>;
+
+    /// Returns reference to internal display state. 
+    /// Might not reflect controller.
+    fn display(&self) -> DisplaySetupRegister;
+
+    /// Writes a new display state to controller 
+    /// and if successful store it's new state.
+    fn write_display(&mut self, dsr: DisplaySetupRegister) -> Result<E>;
+
+    /// Returns reference to internal rowint state. 
+    /// Might not reflect controller.
+    fn rowint(&self) -> RowInt;
+
+    /// Writes new Row/Int output to controller
+    /// and if successful store it's new state.
+    fn write_rowint(&mut self, rowint: RowIntSetupRegister) -> Result<E>;
+
+    /// Returns dimming level. 
+    /// Might not reflect controller.
+    fn dimming(&self) -> DigitalDimmingDataInput;
+
+    /// Writes a new dimming level to controller
+    /// and if successful store it's new state.
+    fn write_dimming(&mut self, dim: DigitalDimmingDataInput) -> Result<E>;
+
+    /// Returns display data address pointer.
+    fn display_data_address_pointer(&self) -> DisplayDataAddressPointer;
+
+    /// Sets the display data address pointer.
+    fn set_display_data_address_pointer(
+        &mut self, 
+        ddap: DisplayDataAddressPointer
+    );
+
+    /// Returns display buffer as a slice.
+    fn dbuf(&self) -> &[u8];
+
+    /// Returns display buffer as a mutable slice.
+    fn dbuf_mut(&mut self) -> &mut [u8];
+
+    /// Sets the display buffer.
+    fn set_dbuf(&mut self, array: &[u8; SEGMENTS_SIZE]);
+
+    /// Clears Display Buffer.
+    fn clear_dbuf(&mut self);
+
+    /// Writes Display Buffer to controller Display Ram.
+    fn write_dbuf(&mut self) -> Result<E>;
+
+    /// Reads Display Ram from controller into a provided buffer or into the
+    /// internal display buffer.
+    fn read_dram(&mut self, buf: Option<&mut [u8]>) -> Result<E>;
+
+    /// Writes slice to controller Display Ram starting from the 
+    /// Display Data Address Pointer. Slice can be up to `SEGMENTS_SIZE` long.
+    /// No state in `self` is mutated except for `self.i2c` (driver).
+    /// 
+    /// # Panic
+    /// 
+    /// Panics if slice is longer than `SEGMENTS_SIZE`.
+    fn write_dram(&mut self, ddap: DisplayDataAddressPointer, slice: &[u8]) 
+    -> Result<E>;
 
     /// Turns system to normal mode, set's Row/Int to Row, turns on display, 
     /// turns dimming to max, and writes what is in display buffer.
-    pub fn power_on(&mut self) -> Result<E> {
+    fn power_on(&mut self) -> Result<E> {
         self.write_system(SystemSetupRegister::Normal)?;
         self.write_rowint(RowIntSetupRegister::Row)?;
         self.write_display(DisplaySetupRegister::On)?;
@@ -224,126 +309,90 @@ where
     /// oscillator.
     /// 
     /// Almost the reverse off `power_on()`.
-    pub fn shutdown(&mut self) -> Result<E> {
+    fn shutdown(&mut self) -> Result<E> {
         self.clear_dbuf();
         self.write_dbuf()?;
         self.write_dimming(DigitalDimmingDataInput::Duty16_16)?;
         self.write_display(DisplaySetupRegister::Off)?;
         self.write_system(SystemSetupRegister::StandBy)
     }
+}
 
-    /// Destroys self and returns internal i2c interface.
-    pub fn i2c(self) -> I2C {self.i2c}
+impl<I2C, E> HT16K33Trait<I2C, E> for HT16K33<I2C>
+where
+    I2C: i2c::Read<Error = E> + i2c::Write<Error = E>
+{
+    fn i2c(self) -> I2C {self.i2c}
 
-    /// Writes unchecked slice to controller.
-    /// 
-    /// Use with caution! See the source code of this library of how to use it.
-    pub unsafe fn write(&mut self, slice: &[u8]) -> Result<E> {
+    unsafe fn write(&mut self, slice: &[u8]) -> Result<E> {
         self.i2c.write(self.i2c_address, slice)
     }
 
-    /// Returns a copy of the i2c address.
-    pub fn i2c_address(&self) -> u8 {self.i2c_address}
+    fn i2c_address(&self) -> u8 {self.i2c_address}
 
-    /// Sets the i2c address.
-    pub fn set_i2c_address(&mut self, i2c_address: u8) {
+    fn set_i2c_address(&mut self, i2c_address: u8) {
         self.i2c_address = i2c_address
     }
     
-    /// Returns reference to internat system mode. 
-    /// Might not reflect controller.
-    pub fn system(&self) -> SystemSetupRegister {self.system}
+    fn system(&self) -> System {self.system}
 
-    /// Writes new System mode to controller
-    /// and if successful store it's new state.
-    pub fn write_system(&mut self, mode: SystemSetupRegister) -> Result<E> {
-        unsafe { self.write(&[mode as u8])?; }
-        self.system = mode; Ok(())
+    fn write_system(&mut self, system: System) -> Result<E> {
+        unsafe { self.write(&[system as u8])?; }
+        self.system = system; Ok(())
     }
 
-    /// Returns reference to internal display state. 
-    /// Might not reflect controller.
-    pub fn display(&self) -> DisplaySetupRegister {self.display}
+    
+    fn display(&self) -> Display {self.display}
 
-    /// Writes a new display state to controller 
-    /// and if successful store it's new state.
-    pub fn write_display(&mut self, dsr: DisplaySetupRegister) -> Result<E> {
+    fn write_display(&mut self, dsr: Display) -> Result<E> {
         unsafe { self.write(&[dsr as u8])?; }
         self.display = dsr; Ok(())
     }
 
-    /// Returns reference to internal rowint state. 
-    /// Might not reflect controller.
-    pub fn rowint(&self) -> RowInt {self.rowint}
+    fn rowint(&self) -> RowInt {self.rowint}
 
-    /// Writes new Row/Int output to controller
-    /// and if successful store it's new state.
-    pub fn write_rowint(&mut self, rowint: RowIntSetupRegister) -> Result<E> {
+    fn write_rowint(&mut self, rowint: RowInt) -> Result<E> {
         unsafe { self.write(&[rowint as u8])?; }
         self.rowint = rowint; Ok(())
     }
     
-    /// Returns dimming level. 
-    /// Might not reflect controller.
-    pub fn dimming(&self) -> DigitalDimmingDataInput {self.dimming}
+    fn dimming(&self) -> Dimming {self.dimming}
 
-    /// Writes a new dimming level to controller
-    /// and if successful store it's new state.
-    pub fn write_dimming(&mut self, dim: DigitalDimmingDataInput) -> Result<E> {
+    fn write_dimming(&mut self, dim: Dimming) -> Result<E> {
         unsafe { self.write(&[dim as u8])?; }
         self.dimming = dim; Ok(())
     }
 
-    /// Returns display data address pointer.
-    pub fn display_data_address_pointer(&self) -> DisplayDataAddressPointer {
-        DisplayDataAddressPointer::from_u8(self.dbuf[0])
+    fn display_data_address_pointer(&self) -> DDAP {
+        DDAP::from_u8(self.dbuf[0])
             .expect("Internal Display Buffer has been corrupted.")
     }
 
-    /// Sets the display data address pointer.
-    pub fn set_display_data_address_pointer(
-        &mut self, 
-        ddap: DisplayDataAddressPointer
-    ) {self.dbuf[0] = ddap as u8}
+    fn set_display_data_address_pointer(&mut self, ddap: DDAP) {
+        self.dbuf[0] = ddap as u8
+    }
 
-    /// Returns display buffer as a slice.
-    pub fn dbuf(&self) -> &[u8] {&self.dbuf[1..]}
+    fn dbuf(&self) -> &[u8] {&self.dbuf[1..]}
 
-    /// Returns display buffer as a mutable slice.
-    pub fn dbuf_mut(&mut self) -> &mut [u8] {&mut self.dbuf[1..]}
+    fn dbuf_mut(&mut self) -> &mut [u8] {&mut self.dbuf[1..]}
 
-    /// Sets the display buffer.
-    pub fn set_dbuf(&mut self, array: &[u8; SEGMENTS_SIZE]) {
+    fn set_dbuf(&mut self, array: &[u8; SEGMENTS_SIZE]) {
         self.dbuf[1..].clone_from_slice(array)
     }
 
-    /// Clears Display Buffer.
-    pub fn clear_dbuf(&mut self) {self.dbuf[1..].fill(0)}
+    fn clear_dbuf(&mut self) {self.dbuf[1..].fill(0)}
 
-    /// Writes Display Buffer to controller Display Ram.
-    pub fn write_dbuf(&mut self) -> Result<E> {
+    fn write_dbuf(&mut self) -> Result<E> {
         self.i2c.write(self.i2c_address, &self.dbuf)
     }
 
-    /// Reads Display Ram from controller into a provided buffer or into the
-    /// internal display buffer.
-    pub fn read_dram(&mut self, buf: Option<&mut [u8]>) -> Result<E> {
+    fn read_dram(&mut self, buf: Option<&mut [u8]>) -> Result<E> {
         self.i2c.read(self.i2c_address, buf.unwrap_or(&mut self.dbuf[1..]))
     }
 
-
-    /// Writes slice to controller Display Ram starting from the 
-    /// Display Data Address Pointer. Slice can be up to `SEGMENTS_SIZE` long.
-    /// No state in `self` is mutated except for `self.i2c` (driver).
-    /// 
-    /// # Panic
-    /// 
-    /// Panics if slice is longer than `SEGMENTS_SIZE`.
-    pub fn write_dram(&mut self, ddap: DisplayDataAddressPointer, slice: &[u8]) 
-    -> Result<E> {
+    fn write_dram(&mut self, ddap: DDAP, slice: &[u8]) -> Result<E> {
         let mut buf = [0; SEGMENTS_SIZE + 1];
-        buf[0] = ddap as u8;
-        buf[1..=slice.len()].clone_from_slice(slice);
+        buf[0] = ddap as u8; buf[1..=slice.len()].clone_from_slice(slice);
         self.i2c.write(self.i2c_address, &buf[..=slice.len()])
     }
 }
