@@ -6,11 +6,9 @@
 //! ht16k33 is a low level library for communicating with ht16k33 controllers.
 //! https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf
 
-use core::convert::TryFrom;
-
 use embedded_hal::blocking::i2c;
 use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::{FromPrimitive};
 
 pub const SEGMENTS_SIZE: usize = 16;
 pub const COMMONS_SIZE: usize  = 8;
@@ -235,7 +233,7 @@ where
     }
 
     /// Destroys self and returns internal i2c interface.
-    pub fn destroy(self) -> I2C {self.i2c}
+    pub fn i2c(self) -> I2C {self.i2c}
 
     /// Writes unchecked slice to controller.
     /// 
@@ -265,16 +263,13 @@ where
 
     /// Returns reference to internal display state. 
     /// Might not reflect controller.
-    pub fn display(&self) -> Display {self.display}
+    pub fn display(&self) -> DisplaySetupRegister {self.display}
 
     /// Writes a new display state to controller 
     /// and if successful store it's new state.
-    pub fn write_display(
-        &mut self, 
-        display: DisplaySetupRegister
-    ) -> Result<E> {
-        unsafe { self.write(&[display as u8])?; }
-        self.display = display; Ok(())
+    pub fn write_display(&mut self, dsr: DisplaySetupRegister) -> Result<E> {
+        unsafe { self.write(&[dsr as u8])?; }
+        self.display = dsr; Ok(())
     }
 
     /// Returns reference to internal rowint state. 
@@ -294,25 +289,22 @@ where
 
     /// Writes a new dimming level to controller
     /// and if successful store it's new state.
-    pub fn write_dimming(
-        &mut self, 
-        pulse: DigitalDimmingDataInput
-    ) -> Result<E> {
-        unsafe { self.write(&[pulse as u8])?; }
-        self.dimming = pulse; Ok(())
+    pub fn write_dimming(&mut self, dim: DigitalDimmingDataInput) -> Result<E> {
+        unsafe { self.write(&[dim as u8])?; }
+        self.dimming = dim; Ok(())
     }
 
+    /// Returns display data address pointer.
     pub fn display_data_address_pointer(&self) -> DisplayDataAddressPointer {
         DisplayDataAddressPointer::from_u8(self.dbuf[0])
             .expect("Internal Display Buffer has been corrupted.")
     }
 
+    /// Sets the display data address pointer.
     pub fn set_display_data_address_pointer(
         &mut self, 
         ddap: DisplayDataAddressPointer
-    ) {
-        self.dbuf[0] = ddap as u8
-    }
+    ) {self.dbuf[0] = ddap as u8}
 
     /// Returns display buffer as a slice.
     pub fn dbuf(&self) -> &[u8] {&self.dbuf[1..]}
@@ -347,11 +339,8 @@ where
     /// # Panic
     /// 
     /// Panics if slice is longer than `SEGMENTS_SIZE`.
-    pub fn write_dram(
-        &mut self, 
-        ddap: DisplayDataAddressPointer, 
-        slice: &[u8]
-    ) -> Result<E> {
+    pub fn write_dram(&mut self, ddap: DisplayDataAddressPointer, slice: &[u8]) 
+    -> Result<E> {
         let mut buf = [0; SEGMENTS_SIZE + 1];
         buf[0] = ddap as u8;
         buf[1..=slice.len()].clone_from_slice(slice);
