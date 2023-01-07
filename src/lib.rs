@@ -224,39 +224,40 @@ pub trait HT16K33Trait<I2C, E> {
     /// Sets the i2c address.
     fn set_i2c_address(&mut self, i2c_address: u8);
     
-    /// Returns reference to internat system mode. 
+    /// Returns internat system setup register state. 
     /// Might not reflect controller.
     fn system(&self) -> SystemSetupRegister;
 
-    /// Writes new System mode to controller
+    /// Writes system setup register state to controller
     /// and if successful store it's new state.
     fn write_system(&mut self, system: SystemSetupRegister) -> Result<E>;
 
-    /// Returns reference to internal display state. 
+    /// Returns internal display setup register state. 
     /// Might not reflect controller.
     fn display(&self) -> DisplaySetupRegister;
 
-    /// Writes a new display state to controller 
+    /// Writes display setup register state to controller 
     /// and if successful store it's new state.
     fn write_display(&mut self, dsr: DisplaySetupRegister) -> Result<E>;
 
-    /// Returns reference to internal rowint state. 
+    /// Returns internal ROW/INT setup register state. 
     /// Might not reflect controller.
-    fn rowint(&self) -> RowInt;
+    fn rowint(&self) -> RowIntSetupRegister;
 
-    /// Writes new Row/Int output to controller
+    /// Writes ROW/INT setup register state to controller
     /// and if successful store it's new state.
     fn write_rowint(&mut self, rowint: RowIntSetupRegister) -> Result<E>;
 
-    /// Returns dimming level. 
+    /// Returns internal digital dimming data input state. 
     /// Might not reflect controller.
     fn dimming(&self) -> DigitalDimmingDataInput;
 
-    /// Writes a new dimming level to controller
+    /// Writes digital dimming data input state to controller
     /// and if successful store it's new state.
     fn write_dimming(&mut self, dim: DigitalDimmingDataInput) -> Result<E>;
 
-    /// Returns display data address pointer.
+    /// Returns internat display data address pointer state.
+    /// Might not reflect controller.
     fn display_data_address_pointer(&self) -> DisplayDataAddressPointer;
 
     /// Sets the display data address pointer.
@@ -271,21 +272,21 @@ pub trait HT16K33Trait<I2C, E> {
     /// Returns display buffer as a mutable slice.
     fn dbuf_mut(&mut self) -> &mut [u8];
 
-    /// Sets the display buffer.
+    /// Sets display buffer.
     fn set_dbuf(&mut self, array: &[u8; SEGMENTS_SIZE]);
 
-    /// Clears Display Buffer.
+    /// Clears display buffer.
     fn clear_dbuf(&mut self);
 
-    /// Writes Display Buffer to controller Display Ram.
+    /// Writes display buffer to controller display ram.
     fn write_dbuf(&mut self) -> Result<E>;
 
-    /// Reads Display Ram from controller into a provided buffer or into the
+    /// Reads display ram from controller into a provided buffer or into the
     /// internal display buffer.
     fn read_dram(&mut self, buf: Option<&mut [u8]>) -> Result<E>;
 
-    /// Writes slice to controller Display Ram starting from the 
-    /// Display Data Address Pointer. Slice can be up to `SEGMENTS_SIZE` long.
+    /// Writes slice to controller display ram starting from the 
+    /// display data address pointer. Slice can be up to `SEGMENTS_SIZE` long.
     /// No state in `self` is mutated except for `self.i2c` (driver).
     /// 
     /// # Panic
@@ -294,24 +295,31 @@ pub trait HT16K33Trait<I2C, E> {
     fn write_dram(&mut self, ddap: DisplayDataAddressPointer, slice: &[u8]) 
     -> Result<E>;
 
-    /// Turns system to normal mode, set's Row/Int to Row, turns on display, 
-    /// turns dimming to max, and writes what is in display buffer.
+    /// Clears display buffer and writes to controller display ram.
+    fn clear_dram(&mut self) -> Result<E> {
+        self.clear_dbuf();
+        self.write_dbuf()
+    }
+
+    /// Writes `SystemSetupRegister::Normal`, 
+    /// `RowIntSetupRegister::Row`, 
+    /// `DisplaySetupRegister::On` and 
+    /// `DigitalDimmingDataInput::Duty16_16` to controller.
+    /// Then clears and writes display buffer.
     fn power_on(&mut self) -> Result<E> {
         self.write_system(SystemSetupRegister::Normal)?;
         self.write_rowint(RowIntSetupRegister::Row)?;
         self.write_display(DisplaySetupRegister::On)?;
         self.write_dimming(DigitalDimmingDataInput::Duty16_16)?;
-        self.clear_dbuf();
-        self.write_dbuf()
+        self.clear_dram()
     }
 
-    /// Clears and writes a bland display buffer, turns off dimming display and 
-    /// oscillator.
-    /// 
-    /// Almost the reverse off `power_on()`.
+    /// Clears and writes a display buffer to controller,
+    /// writes `DigitalDimmingDataInput::Duty16_16`,
+    /// `DisplaySetupRegister::Off` and
+    /// `SystemSetupRegister::StandBy` to controller.
     fn shutdown(&mut self) -> Result<E> {
-        self.clear_dbuf();
-        self.write_dbuf()?;
+        self.clear_dram()?;
         self.write_dimming(DigitalDimmingDataInput::Duty16_16)?;
         self.write_display(DisplaySetupRegister::Off)?;
         self.write_system(SystemSetupRegister::StandBy)
