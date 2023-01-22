@@ -273,7 +273,7 @@ pub trait HT16K33Trait<I2C, E> {
     fn dbuf_mut(&mut self) -> &mut [u8];
 
     /// Sets display buffer.
-    fn set_dbuf(&mut self, array: &[u8; SEGMENTS_SIZE]);
+    fn set_dbuf(&mut self, src: &[u8; SEGMENTS_SIZE]);
 
     /// Clears display buffer.
     fn clear_dbuf(&mut self);
@@ -384,8 +384,8 @@ where
 
     fn dbuf_mut(&mut self) -> &mut [u8] {&mut self.dbuf[1..]}
 
-    fn set_dbuf(&mut self, array: &[u8; SEGMENTS_SIZE]) {
-        self.dbuf[1..].clone_from_slice(array)
+    fn set_dbuf(&mut self, src: &[u8; SEGMENTS_SIZE]) {
+        self.dbuf[1..].clone_from_slice(src)
     }
 
     fn clear_dbuf(&mut self) {self.dbuf[1..].fill(0)}
