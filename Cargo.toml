@@ -10,7 +10,6 @@ keywords = ["driver", "led", "ht16k33", "no-std", "embedded-hal"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
-ambassador = "0.3"
 embedded-hal = "0.2"
-num-traits =  { version = "0.2", default-features = false }
-num-derive = { version = "0.3", default-features = false }
+enum-ordinalize = "3.1"
+

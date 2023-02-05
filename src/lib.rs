@@ -6,18 +6,17 @@
 //! ht16k33 is a low level library for communicating with ht16k33 controllers.
 //! https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf
 
-use ambassador::delegatable_trait;
-use embedded_hal::blocking::i2c;
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::{FromPrimitive};
+pub use embedded_hal::blocking::i2c::{self, Read, Write};
+pub use enum_ordinalize::Ordinalize;
 
 pub const SEGMENTS_SIZE: usize = 16;
 pub const COMMONS_SIZE: usize  = 8;
 
-pub trait Command { const COMMAND_MASK: isize; }
+pub trait Command { const COMMAND_MASK: u8; }
 
 /// System Setup Register.
-#[derive(Copy, Clone, Debug, Hash, FromPrimitive, ToPrimitive)]
+#[derive(Copy, Clone, Debug, Hash)]
+#[repr(u8)]
 pub enum SystemSetupRegister {
     /// Oscillator off
     StandBy = Self::COMMAND_MASK | 0,
@@ -27,14 +26,15 @@ pub enum SystemSetupRegister {
 
 impl Command for SystemSetupRegister {
     /// Write only
-    const COMMAND_MASK: isize = 0b0010_0000; 
+    const COMMAND_MASK: u8 = 0b0010_0000; 
 }
 
 /// Alias for System Setup Register.
 pub type System = SystemSetupRegister;
 
 /// ROW/INT Setup Register.
-#[derive(Copy, Clone, Debug, Hash, FromPrimitive, ToPrimitive)]
+#[derive(Copy, Clone, Debug, Hash)]
+#[repr(u8)]
 pub enum RowIntSetupRegister {
     /// Row driver output
     Row     = Self::COMMAND_MASK | 0b0000,
@@ -46,14 +46,15 @@ pub enum RowIntSetupRegister {
 
 impl Command for RowIntSetupRegister {
     /// Write only
-    const COMMAND_MASK: isize = 0b1010_0000;
+    const COMMAND_MASK: u8 = 0b1010_0000;
 }
 
 /// Alias for ROW/INT Setup Register.
 pub type RowInt = RowIntSetupRegister;
 
 /// Display Setup Register.
-#[derive(Copy, Clone, Debug, Hash, FromPrimitive, ToPrimitive)]
+#[derive(Copy, Clone, Debug, Hash)]
+#[repr(u8)]
 pub enum DisplaySetupRegister {
     /// Display off
     Off     = Self::COMMAND_MASK | 0b0000,
@@ -69,14 +70,15 @@ pub enum DisplaySetupRegister {
 
 impl Command for DisplaySetupRegister {
     /// Write only
-    const COMMAND_MASK: isize = 0b1000_0000; 
+    const COMMAND_MASK: u8 = 0b1000_0000; 
 }
 
 /// Alias for Display Setup Register.
 pub type Display = DisplaySetupRegister;
 
 /// Digital Dimming Data Input Pulse Width Duties.
-#[derive(Copy, Clone, Debug, Hash, FromPrimitive, ToPrimitive)]
+#[derive(Copy, Clone, Debug, Hash, Ordinalize)]
+#[repr(u8)]
 pub enum DigitalDimmingDataInput { 
     Duty1_16 =  Self::COMMAND_MASK | 0b0000,
     Duty2_16 =  Self::COMMAND_MASK | 0b0001,
@@ -98,7 +100,7 @@ pub enum DigitalDimmingDataInput {
 
 impl Command for DigitalDimmingDataInput {
     /// Write only
-    const COMMAND_MASK: isize = 0b1110_0000;
+    const COMMAND_MASK: u8 = 0b1110_0000;
 }
 
 /// Alias for Digital Dimming Data Input.
@@ -106,7 +108,8 @@ pub type Dimming = DigitalDimmingDataInput;
 
 
 /// Display Data Address Pointer.
-#[derive(Copy, Clone, Debug, Hash, FromPrimitive, ToPrimitive)]
+#[derive(Copy, Clone, Debug, Hash, Ordinalize)]
+#[repr(u8)]
 pub enum DisplayDataAddressPointer {
     Addr0 =  Self::COMMAND_MASK | 0b0000,
     Addr1 =  Self::COMMAND_MASK | 0b0001,
@@ -128,14 +131,15 @@ pub enum DisplayDataAddressPointer {
 
 impl Command for DisplayDataAddressPointer {
     /// R/W;
-    const COMMAND_MASK: isize = 0b0000_0000;
+    const COMMAND_MASK: u8 = 0b0000_0000;
 }
 
 /// Alias for Display Data Address Pointer
 pub type DDAP = DisplayDataAddressPointer;
 
 /// Key Data Address Pointers.
-#[derive(Copy, Clone, Debug, Hash, FromPrimitive, ToPrimitive)]
+#[derive(Copy, Clone, Debug, Hash, Ordinalize)]
+#[repr(u8)]
 pub enum KeyDataAddressPointer {
     Addr0 = Self::COMMAND_MASK | 0b000,
     Addr1 = Self::COMMAND_MASK | 0b001,
@@ -149,7 +153,7 @@ pub enum KeyDataAddressPointer {
 
 impl Command for KeyDataAddressPointer {
     /// Read only
-    const COMMAND_MASK: isize = 0b0100_0000;
+    const COMMAND_MASK: u8 = 0b0100_0000;
 }
 
 /// Alias for Key Data Address Pointer.
@@ -205,15 +209,9 @@ impl<I2C> HT16K33<I2C> {
     }
 }
 
-#[delegatable_trait]
-pub trait HT16K33Trait<I2C, E> {
+pub trait HT16K33Trait<I2C, E>: embedded_hal::blocking::i2c::Read + embedded_hal::blocking::i2c::Write {
     /// Destroys self and returns internal i2c interface.
     fn i2c(self) -> I2C;
-
-    /// Writes unchecked slice to controller.
-    /// 
-    /// Use with caution! See the source code of this library of how to use it.
-    unsafe fn write(&mut self, slice: &[u8]) -> Result<E>;
 
     /// Returns a copy of the i2c address.
     fn i2c_address(&self) -> u8;
@@ -323,15 +321,33 @@ pub trait HT16K33Trait<I2C, E> {
     }
 }
 
+impl<I2C, E> i2c::Read for HT16K33<I2C>
+where
+    I2C: i2c::Read<Error = E> 
+{
+    type Error = E;
+
+    fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<Self::Error> {
+        self.i2c.read(address, buffer)
+    }
+}
+
+impl<I2C, E> i2c::Write for HT16K33<I2C>
+where
+    I2C: i2c::Write<Error = E> 
+{
+        type Error = E;
+
+    fn write(&mut self, address: u8, bytes: &[u8]) -> Result<Self::Error> {
+        self.i2c.write(address, bytes)
+    }
+}
+
 impl<I2C, E> HT16K33Trait<I2C, E> for HT16K33<I2C>
 where
     I2C: i2c::Read<Error = E> + i2c::Write<Error = E>
 {
     fn i2c(self) -> I2C {self.i2c}
-
-    unsafe fn write(&mut self, slice: &[u8]) -> Result<E> {
-        self.i2c.write(self.i2c_address, slice)
-    }
 
     fn i2c_address(&self) -> u8 {self.i2c_address}
 
@@ -341,35 +357,35 @@ where
     
     fn system(&self) -> System {self.system}
 
-    fn write_system(&mut self, system: System) -> Result<E> {
-        unsafe { self.write(&[system as u8])?; }
-        self.system = system; Ok(())
+    fn write_system(&mut self, sys: System) -> Result<E> {
+        self.write(self.i2c_address, &[sys as u8])?;
+        self.system = sys; Ok(())
     }
 
     
     fn display(&self) -> Display {self.display}
 
-    fn write_display(&mut self, dsr: Display) -> Result<E> {
-        unsafe { self.write(&[dsr as u8])?; }
-        self.display = dsr; Ok(())
+    fn write_display(&mut self, dpy: Display) -> Result<E> {
+        self.write(self.i2c_address, &[dpy as u8])?;
+        self.display = dpy; Ok(())
     }
 
     fn rowint(&self) -> RowInt {self.rowint}
 
     fn write_rowint(&mut self, rowint: RowInt) -> Result<E> {
-        unsafe { self.write(&[rowint as u8])?; }
+        self.write(self.i2c_address, &[rowint as u8])?;
         self.rowint = rowint; Ok(())
     }
     
     fn dimming(&self) -> Dimming {self.dimming}
 
     fn write_dimming(&mut self, dim: Dimming) -> Result<E> {
-        unsafe { self.write(&[dim as u8])?; }
+        self.write(self.i2c_address, &[dim as u8])?;
         self.dimming = dim; Ok(())
     }
 
     fn display_data_address_pointer(&self) -> DDAP {
-        DDAP::from_u8(self.dbuf[0])
+        DDAP::from_ordinal(self.dbuf[0])
             .expect("Internal Display Buffer has been corrupted.")
     }
 
