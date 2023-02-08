@@ -106,7 +106,6 @@ impl Command for DigitalDimmingDataInput {
 /// Alias for Digital Dimming Data Input.
 pub type Dimming = DigitalDimmingDataInput;
 
-
 /// Display Data Address Pointer.
 #[derive(Copy, Clone, Debug, Hash, Ordinalize)]
 #[repr(u8)]
@@ -163,15 +162,15 @@ pub type KDAP = KeyDataAddressPointer;
 /// 
 /// Not yet implemented in `struct HT16K33` as I don't understand how it's used 
 /// or for what.
-pub const IntFlagAddressPointer: isize = 0b0110_0000;
+pub const IntFlagAddressPointer: u8 = 0b0110_0000;
 
 /// Alias for Int Flag Address Pointer.
-pub const IFAP: isize = IntFlagAddressPointer;
+pub const IFAP: u8 = IntFlagAddressPointer;
 
 /// Test Mode.
 /// 
 /// Not yet implemented in `struct HT16K33` as I don't know how it's used.
-pub const TestModeHoltekOnly: isize = 0b1101_1001;
+pub const TestModeHoltekOnly: u8 = 0b1101_1001;
 
 pub type Result<Error> = core::result::Result<(), Error>;
 
@@ -336,7 +335,7 @@ impl<I2C, E> i2c::Write for HT16K33<I2C>
 where
     I2C: i2c::Write<Error = E> 
 {
-        type Error = E;
+    type Error = E;
 
     fn write(&mut self, address: u8, bytes: &[u8]) -> Result<Self::Error> {
         self.i2c.write(address, bytes)
