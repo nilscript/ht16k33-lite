@@ -7,7 +7,8 @@
 //! https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf
 
 pub use embedded_hal::blocking::i2c::{self, Read, Write};
-pub use enum_ordinalize::Ordinalize;
+pub use enum_index::IndexEnum;
+use enum_index_derive::{EnumIndex, IndexEnum};
 
 pub const SEGMENTS_SIZE: usize = 16;
 pub const COMMONS_SIZE: usize  = 8;
@@ -77,7 +78,7 @@ impl Command for DisplaySetupRegister {
 pub type Display = DisplaySetupRegister;
 
 /// Digital Dimming Data Input Pulse Width Duties.
-#[derive(Copy, Clone, Debug, Hash, Ordinalize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum DigitalDimmingDataInput { 
     Duty1_16 =  Self::COMMAND_MASK | 0b0000,
@@ -107,7 +108,7 @@ impl Command for DigitalDimmingDataInput {
 pub type Dimming = DigitalDimmingDataInput;
 
 /// Display Data Address Pointer.
-#[derive(Copy, Clone, Debug, Hash, Ordinalize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIndex, Hash, IndexEnum, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum DisplayDataAddressPointer {
     Addr0 =  Self::COMMAND_MASK | 0b0000,
@@ -137,7 +138,7 @@ impl Command for DisplayDataAddressPointer {
 pub type DDAP = DisplayDataAddressPointer;
 
 /// Key Data Address Pointers.
-#[derive(Copy, Clone, Debug, Hash, Ordinalize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIndex, Hash, IndexEnum, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum KeyDataAddressPointer {
     Addr0 = Self::COMMAND_MASK | 0b000,
@@ -180,13 +181,13 @@ pub type Result<Error> = core::result::Result<(), Error>;
 /// onto the connected controller.
 #[derive(Copy, Clone, Debug, Hash)]
 pub struct HT16K33<I2C> {
-    i2c:      I2C,
-    i2c_address:  u8,
-    dbuf:     [u8; SEGMENTS_SIZE + 1],
-    system:   SystemSetupRegister,
-    display:  DisplaySetupRegister,
-    rowint:   RowIntSetupRegister,
-    dimming:  DigitalDimmingDataInput,
+    i2c:            I2C,
+    i2c_address:    u8,
+    dbuf:           [u8; SEGMENTS_SIZE + 1],
+    system:         SystemSetupRegister,
+    display:        DisplaySetupRegister,
+    rowint:         RowIntSetupRegister,
+    dimming:        DigitalDimmingDataInput,
 }
 
 impl<I2C> HT16K33<I2C> {
@@ -208,7 +209,7 @@ impl<I2C> HT16K33<I2C> {
     }
 }
 
-pub trait HT16K33Trait<I2C, E>: embedded_hal::blocking::i2c::Read + embedded_hal::blocking::i2c::Write {
+pub trait HT16K33Trait<I2C, E>: i2c::Read + i2c::Write {
     /// Destroys self and returns internal i2c interface.
     fn i2c(self) -> I2C;
 
@@ -384,7 +385,7 @@ where
     }
 
     fn display_data_address_pointer(&self) -> DDAP {
-        DDAP::from_ordinal(self.dbuf[0])
+        DDAP::index_enum(self.dbuf[0] as usize)
             .expect("Internal Display Buffer has been corrupted.")
     }
 
