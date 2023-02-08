@@ -11,5 +11,5 @@ categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
 embedded-hal = "0.2"
-enum_index = "0.2.0"
-enum_index_derive = "0.2.0"
+enum_index = "0.2"
+enum_index_derive = "0.2"
