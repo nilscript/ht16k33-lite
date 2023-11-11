@@ -21,7 +21,7 @@ pub const COMMONS_SIZE: usize  = 8;
 pub trait Command { const COMMAND_MASK: u8; }
 
 /// [System Setup Register](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134352)
-#[derive(Copy, Clone, Debug, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 #[repr(u8)]
 pub enum SystemSetupRegister {
     /// Oscillator off
@@ -39,7 +39,7 @@ impl Command for SystemSetupRegister {
 pub type System = SystemSetupRegister;
 
 /// [ROW/INT Set Register](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134356)
-#[derive(Copy, Clone, Debug, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 #[repr(u8)]
 pub enum RowIntSetupRegister {
     /// Row driver output
@@ -59,7 +59,7 @@ impl Command for RowIntSetupRegister {
 pub type RowInt = RowIntSetupRegister;
 
 /// [Display Setup Register](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134360)
-#[derive(Copy, Clone, Debug, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 #[repr(u8)]
 pub enum DisplaySetupRegister {
     /// Display off
@@ -83,8 +83,7 @@ impl Command for DisplaySetupRegister {
 pub type Display = DisplaySetupRegister;
 
 /// [Digital Dimming Data Input](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134397)
-#[derive(Copy, Clone, Debug, PartialEq, Eq, 
-    EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialEq, EnumIndex, IndexEnum, Hash, PartialOrd, Ord, Debug)]
 #[repr(u8)]
 pub enum DigitalDimmingDataInput { 
     Duty1_16 =  Self::COMMAND_MASK | 0b0000,
@@ -114,8 +113,7 @@ impl Command for DigitalDimmingDataInput {
 pub type Dimming = DigitalDimmingDataInput;
 
 /// [Display Data Address Pointer](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134369)
-#[derive(Copy, Clone, Debug, PartialEq, Eq, 
-    EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialEq, EnumIndex, IndexEnum, Hash, PartialOrd, Ord, Debug)]
 #[repr(u8)]
 pub enum DisplayDataAddressPointer {
     Addr0 =  Self::COMMAND_MASK | 0b0000,
@@ -145,8 +143,7 @@ impl Command for DisplayDataAddressPointer {
 pub type DDAP = DisplayDataAddressPointer;
 
 /// [Key Data Address Pointers](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134373)
-#[derive(Copy, Clone, Debug, PartialEq, Eq, 
-    EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialEq, EnumIndex, IndexEnum, Hash, PartialOrd, Ord, Debug)]
 #[repr(u8)]
 pub enum KeyDataAddressPointer {
     Addr0 = Self::COMMAND_MASK | 0b000,
