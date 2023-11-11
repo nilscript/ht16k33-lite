@@ -4,7 +4,7 @@
 
 //! # ht16k33-lite
 //! ht16k33 is a low level library for communicating with ht16k33 controllers.
-//! https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf
+//! <https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf>
 
 pub use embedded_hal::blocking::i2c::{self, Read, Write};
 pub use enum_index::IndexEnum;
@@ -13,6 +13,7 @@ use enum_index_derive::{EnumIndex, IndexEnum};
 pub const SEGMENTS_SIZE: usize = 16;
 pub const COMMONS_SIZE: usize  = 8;
 
+/// Trait for holding a command mask.
 pub trait Command { const COMMAND_MASK: u8; }
 
 /// System Setup Register.
@@ -78,7 +79,8 @@ impl Command for DisplaySetupRegister {
 pub type Display = DisplaySetupRegister;
 
 /// Digital Dimming Data Input Pulse Width Duties.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, 
+    EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum DigitalDimmingDataInput { 
     Duty1_16 =  Self::COMMAND_MASK | 0b0000,
@@ -108,7 +110,8 @@ impl Command for DigitalDimmingDataInput {
 pub type Dimming = DigitalDimmingDataInput;
 
 /// Display Data Address Pointer.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIndex, Hash, IndexEnum, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, 
+    EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum DisplayDataAddressPointer {
     Addr0 =  Self::COMMAND_MASK | 0b0000,
@@ -138,7 +141,8 @@ impl Command for DisplayDataAddressPointer {
 pub type DDAP = DisplayDataAddressPointer;
 
 /// Key Data Address Pointers.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIndex, Hash, IndexEnum, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, 
+    EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum KeyDataAddressPointer {
     Addr0 = Self::COMMAND_MASK | 0b000,
@@ -161,17 +165,16 @@ pub type KDAP = KeyDataAddressPointer;
 
 /// Int Flag Address Pointer.
 /// 
-/// Not yet implemented in `struct HT16K33` as I don't understand how it's used 
-/// or for what.
-pub const IntFlagAddressPointer: u8 = 0b0110_0000;
+/// No implementation is planned. PRs welcomed.
+pub const INT_FLAG_ADDRESS_POINTER: u8 = 0b0110_0000;
 
 /// Alias for Int Flag Address Pointer.
-pub const IFAP: u8 = IntFlagAddressPointer;
+pub const IFAP: u8 = INT_FLAG_ADDRESS_POINTER;
 
 /// Test Mode.
 /// 
-/// Not yet implemented in `struct HT16K33` as I don't know how it's used.
-pub const TestModeHoltekOnly: u8 = 0b1101_1001;
+/// No implementation is planned. PRs welcomed.
+pub const TEST_MODE_HOLTEK_ONLY: u8 = 0b1101_1001;
 
 pub type Result<Error> = core::result::Result<(), Error>;
 
@@ -192,7 +195,8 @@ pub struct HT16K33<I2C> {
 
 impl<I2C> HT16K33<I2C> {
     /// Creates a new instance of HT16K33 driver.
-    /// Should be followed by `.power_on()`
+    /// Nothing is known of the state of the controller so it is best to reset
+    /// it with `.power_on()` before use.
     pub fn new(i2c: I2C, i2c_address: u8) -> Self {
         let mut dbuf = [0; SEGMENTS_SIZE + 1];
         dbuf[0] = DisplayDataAddressPointer::Addr0 as u8;
@@ -219,43 +223,43 @@ pub trait HT16K33Trait<I2C, E>: i2c::Read + i2c::Write {
     /// Sets the i2c address.
     fn set_i2c_address(&mut self, i2c_address: u8);
     
-    /// Returns internat system setup register state. 
-    /// Might not reflect controller.
+    /// Returns internal system setup register state. 
+    /// Might not reflect the state of the controller.
     fn system(&self) -> SystemSetupRegister;
 
     /// Writes system setup register state to controller
-    /// and if successful store it's new state.
+    /// and if successful store it's new state internally.
     fn write_system(&mut self, system: SystemSetupRegister) -> Result<E>;
 
     /// Returns internal display setup register state. 
-    /// Might not reflect controller.
+    /// Might not reflect the state of the controller.
     fn display(&self) -> DisplaySetupRegister;
 
     /// Writes display setup register state to controller 
-    /// and if successful store it's new state.
+    /// and if successful store it's new state internally.
     fn write_display(&mut self, dsr: DisplaySetupRegister) -> Result<E>;
 
     /// Returns internal ROW/INT setup register state. 
-    /// Might not reflect controller.
+    /// Might not reflect the state of the controller.
     fn rowint(&self) -> RowIntSetupRegister;
 
     /// Writes ROW/INT setup register state to controller
-    /// and if successful store it's new state.
+    /// and if successful store it's new state internally.
     fn write_rowint(&mut self, rowint: RowIntSetupRegister) -> Result<E>;
 
     /// Returns internal digital dimming data input state. 
-    /// Might not reflect controller.
+    /// Might not reflect the state of the controller.
     fn dimming(&self) -> DigitalDimmingDataInput;
 
     /// Writes digital dimming data input state to controller
-    /// and if successful store it's new state.
+    /// and if successful store it's new state internally.
     fn write_dimming(&mut self, dim: DigitalDimmingDataInput) -> Result<E>;
 
     /// Returns internat display data address pointer state.
-    /// Might not reflect controller.
+    /// Might not reflect the state of the controller.
     fn display_data_address_pointer(&self) -> DisplayDataAddressPointer;
 
-    /// Sets the display data address pointer.
+    /// Sets the display data address pointer internally.
     fn set_display_data_address_pointer(
         &mut self, 
         ddap: DisplayDataAddressPointer
@@ -267,10 +271,10 @@ pub trait HT16K33Trait<I2C, E>: i2c::Read + i2c::Write {
     /// Returns display buffer as a mutable slice.
     fn dbuf_mut(&mut self) -> &mut [u8];
 
-    /// Sets display buffer.
+    /// Sets display buffer from a sized array.
     fn set_dbuf(&mut self, src: &[u8; SEGMENTS_SIZE]);
 
-    /// Clears display buffer.
+    /// Clears display buffer by setting all values to zero.
     fn clear_dbuf(&mut self);
 
     /// Writes display buffer to controller display ram.
@@ -282,7 +286,7 @@ pub trait HT16K33Trait<I2C, E>: i2c::Read + i2c::Write {
 
     /// Writes slice to controller display ram starting from the 
     /// display data address pointer. Slice can be up to `SEGMENTS_SIZE` long.
-    /// No state in `self` is mutated except for `self.i2c` (driver).
+    /// No state in `self` is mutated except for `self.i2c` (internal driver).
     /// 
     /// # Panic
     /// 
@@ -362,7 +366,6 @@ where
         self.system = sys; Ok(())
     }
 
-    
     fn display(&self) -> Display {self.display}
 
     fn write_display(&mut self, dpy: Display) -> Result<E> {
@@ -413,7 +416,8 @@ where
 
     fn write_dram(&mut self, ddap: DDAP, slice: &[u8]) -> Result<E> {
         let mut buf = [0; SEGMENTS_SIZE + 1];
-        buf[0] = ddap as u8; buf[1..=slice.len()].clone_from_slice(slice);
+        buf[0] = ddap as u8; 
+        buf[1..=slice.len()].clone_from_slice(slice);
         self.i2c.write(self.i2c_address, &buf[..=slice.len()])
     }
 }
