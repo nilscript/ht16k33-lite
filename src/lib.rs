@@ -280,9 +280,11 @@ pub trait HT16K33Trait<I2C, E>: i2c::Read + i2c::Write {
     /// Writes display buffer to controller display ram.
     fn write_dbuf(&mut self) -> Result<E>;
 
-    /// Reads display ram from controller into a provided buffer or into the
-    /// internal display buffer.
-    fn read_dram(&mut self, buf: Option<&mut [u8]>) -> Result<E>;
+    /// Reads display ram from controller into a provided buffer.
+    fn read_dram(&mut self, buf: &mut [u8]) -> Result<E>;
+
+    /// Reads display ram from controller into the internal display buffer.
+    fn read_dram_to_dbuf(&mut self) -> Result<E>;
 
     /// Writes slice to controller display ram starting from the 
     /// display data address pointer. Slice can be up to `SEGMENTS_SIZE` long.
@@ -410,8 +412,12 @@ where
         self.i2c.write(self.i2c_address, &self.dbuf)
     }
 
-    fn read_dram(&mut self, buf: Option<&mut [u8]>) -> Result<E> {
-        self.i2c.read(self.i2c_address, buf.unwrap_or(&mut self.dbuf[1..]))
+    fn read_dram(&mut self, buf: &mut [u8]) -> Result<E> {
+        self.i2c.read(self.i2c_address, buf)
+    }
+
+    fn read_dram_to_dbuf(&mut self) -> Result<E> {
+        self.i2c.read(self.i2c_address, &mut self.dbuf[1..])
     }
 
     fn write_dram(&mut self, ddap: DDAP, slice: &[u8]) -> Result<E> {
