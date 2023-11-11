@@ -2,8 +2,9 @@
 #![allow(non_upper_case_globals)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-//! # ht16k33-lite
-//! ht16k33 is a low level library for communicating with ht16k33 controllers.
+//! ht16k33-lite is a low level library for communicating with ht16k33
+//! controllers.
+//!
 //! <https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf>
 
 pub use embedded_hal::blocking::i2c::{self, Read, Write};
@@ -14,9 +15,12 @@ pub const SEGMENTS_SIZE: usize = 16;
 pub const COMMONS_SIZE: usize  = 8;
 
 /// Trait for holding a command mask.
+///
+/// See <https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134493>
+/// for more information.
 pub trait Command { const COMMAND_MASK: u8; }
 
-/// System Setup Register.
+/// [System Setup Register](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134352)
 #[derive(Copy, Clone, Debug, Hash)]
 #[repr(u8)]
 pub enum SystemSetupRegister {
@@ -34,7 +38,7 @@ impl Command for SystemSetupRegister {
 /// Alias for System Setup Register.
 pub type System = SystemSetupRegister;
 
-/// ROW/INT Setup Register.
+/// [ROW/INT Set Register](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134356)
 #[derive(Copy, Clone, Debug, Hash)]
 #[repr(u8)]
 pub enum RowIntSetupRegister {
@@ -54,7 +58,7 @@ impl Command for RowIntSetupRegister {
 /// Alias for ROW/INT Setup Register.
 pub type RowInt = RowIntSetupRegister;
 
-/// Display Setup Register.
+/// [Display Setup Register](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134360)
 #[derive(Copy, Clone, Debug, Hash)]
 #[repr(u8)]
 pub enum DisplaySetupRegister {
@@ -78,7 +82,7 @@ impl Command for DisplaySetupRegister {
 /// Alias for Display Setup Register.
 pub type Display = DisplaySetupRegister;
 
-/// Digital Dimming Data Input Pulse Width Duties.
+/// [Digital Dimming Data Input](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134397)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, 
     EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
 #[repr(u8)]
@@ -109,7 +113,7 @@ impl Command for DigitalDimmingDataInput {
 /// Alias for Digital Dimming Data Input.
 pub type Dimming = DigitalDimmingDataInput;
 
-/// Display Data Address Pointer.
+/// [Display Data Address Pointer](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134369)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, 
     EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
 #[repr(u8)]
@@ -140,7 +144,7 @@ impl Command for DisplayDataAddressPointer {
 /// Alias for Display Data Address Pointer
 pub type DDAP = DisplayDataAddressPointer;
 
-/// Key Data Address Pointers.
+/// [Key Data Address Pointers](https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf#HT16K33v110_110516.indd%3A.134373)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, 
     EnumIndex, IndexEnum, Hash, PartialOrd, Ord)]
 #[repr(u8)]
@@ -186,6 +190,8 @@ pub type Result<Error> = core::result::Result<(), Error>;
 pub struct HT16K33<I2C> {
     i2c:            I2C,
     i2c_address:    u8,
+    // Contains both the `DisplayDataAddressPointer` as index 0 and the
+    // display buffer on the remaining 16 indexes.
     dbuf:           [u8; SEGMENTS_SIZE + 1],
     system:         SystemSetupRegister,
     display:        DisplaySetupRegister,
@@ -213,7 +219,7 @@ impl<I2C> HT16K33<I2C> {
     }
 }
 
-pub trait HT16K33Trait<I2C, E>: i2c::Read + i2c::Write {
+pub trait HT16K33Trait<I2C, E>: Read + Write {
     /// Destroys self and returns internal i2c interface.
     fn i2c(self) -> I2C;
 
@@ -255,13 +261,13 @@ pub trait HT16K33Trait<I2C, E>: i2c::Read + i2c::Write {
     /// and if successful store it's new state internally.
     fn write_dimming(&mut self, dim: DigitalDimmingDataInput) -> Result<E>;
 
-    /// Returns internat display data address pointer state.
+    /// Returns the internal display data address pointer state.
     /// Might not reflect the state of the controller.
     fn display_data_address_pointer(&self) -> DisplayDataAddressPointer;
 
     /// Sets the display data address pointer internally.
     fn set_display_data_address_pointer(
-        &mut self, 
+        &mut self,
         ddap: DisplayDataAddressPointer
     );
 
@@ -327,9 +333,9 @@ pub trait HT16K33Trait<I2C, E>: i2c::Read + i2c::Write {
     }
 }
 
-impl<I2C, E> i2c::Read for HT16K33<I2C>
+impl<I2C, E> Read for HT16K33<I2C>
 where
-    I2C: i2c::Read<Error = E> 
+    I2C: Read<Error = E>
 {
     type Error = E;
 
@@ -338,9 +344,9 @@ where
     }
 }
 
-impl<I2C, E> i2c::Write for HT16K33<I2C>
+impl<I2C, E> Write for HT16K33<I2C>
 where
-    I2C: i2c::Write<Error = E> 
+    I2C: Write<Error = E>
 {
     type Error = E;
 
@@ -351,7 +357,7 @@ where
 
 impl<I2C, E> HT16K33Trait<I2C, E> for HT16K33<I2C>
 where
-    I2C: i2c::Read<Error = E> + i2c::Write<Error = E>
+    I2C: Read<Error = E> + Write<Error = E>
 {
     fn i2c(self) -> I2C {self.i2c}
 
